@@ -34,11 +34,13 @@ cd "$APP"
 
 if [ ! -d node_modules ] || [ bun.lock -nt node_modules ]; then
   echo "Installing dependencies (bun install)..."
-  bun install
+  bun install --backend=copyfile
 fi
 
-echo "Building the static bundle..."
-bun run build
+if [ ! -f dist/index.html ] || [ "${REBUILD:-0}" = "1" ]; then
+  echo "Building the static bundle..."
+  bun run --bun build
+fi
 
 # Delegate the actual serving to the shared launcher, which validates dist/,
 # exports the absolute HERMES_WEB_DIST, and execs 'hermes serve'.

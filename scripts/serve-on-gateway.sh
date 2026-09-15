@@ -48,7 +48,9 @@ fi
 export HERMES_WEB_DIST="${DIST_DIR}"
 
 echo "HERMES_WEB_DIST=${HERMES_WEB_DIST}" >&2
-echo "Starting: hermes serve $*" >&2
+echo "Starting: hermes dashboard --no-open $*" >&2
 
 # Hand off to the gateway, forwarding any extra args unchanged.
-exec hermes serve "$@"
+# Note: In current hermes-agent, `hermes serve` is headless-only (HERMES_SERVE_HEADLESS=1
+# which disables SPA serving). `hermes dashboard --no-open` serves HERMES_WEB_DIST.
+exec hermes dashboard --no-open "$@"

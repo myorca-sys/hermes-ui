@@ -4,6 +4,8 @@ node_modules/
 # Build output
 app/dist/
 app/dev-dist/
+mobile/dist/web/
+mobile/android/
 
 # Vite / tooling caches
 .vite/
