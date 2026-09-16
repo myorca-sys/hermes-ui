@@ -52,6 +52,8 @@ export function BootFailureOverlay() {
       return ''
     }
   })
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
 
   const visible = Boolean(boot.error) && !boot.running
   // While first-run onboarding owns the picker/flow we let it surface its own
@@ -153,6 +155,36 @@ export function BootFailureOverlay() {
     }
   }
 
+  const handlePasswordLogin = async () => {
+    let url = gatewayInput.trim().replace(/\/+$/, '')
+    if (!url && remoteReauth?.url) {
+      url = remoteReauth.url
+    }
+    if (!url) return
+    if (!/^https?:\/\//i.test(url)) {
+      url = 'http://' + url
+    }
+    if (!username.trim() || !password) {
+      notify({ kind: 'warning', title: 'Credentials required', message: 'Enter username and password' })
+      return
+    }
+    setBusy('signin')
+    try {
+      localStorage.setItem('hermes_gateway_url', url)
+      const res = await window.hermesDesktop?.passwordLoginConnectionConfig?.(url, username.trim(), password)
+      if (res?.ok) {
+        notify({ kind: 'success', title: t.boot.failure.signedInTitle, message: t.boot.failure.signedInMessage })
+        window.location.reload()
+        return
+      }
+      notify({ kind: 'error', title: 'Sign-in failed', message: res?.error || 'Invalid credentials' })
+    } catch (err) {
+      notifyError(err, 'Sign-in failed')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   const retry = async () => {
     setBusy('retry')
     await window.hermesDesktop?.resetBootstrap().catch(() => undefined)
@@ -228,29 +260,64 @@ export function BootFailureOverlay() {
             {boot.error}
           </div>
 
-          {isCapacitor() ? (
-            <div className="grid gap-2 rounded-xl border border-(--ui-stroke-tertiary) bg-(--ui-bg-quinary) p-3">
-              <label className="text-xs font-medium text-(--ui-text-primary)">
-                Hermes Gateway URL
-              </label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="http://192.168.x.x:9119"
-                  value={gatewayInput}
-                  onChange={e => setGatewayInput(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') void connectGateway()
-                  }}
-                  className="text-xs flex-1"
-                />
-                <Button
-                  disabled={Boolean(busy) || !gatewayInput.trim()}
-                  onClick={() => void connectGateway()}
-                  size="sm"
-                >
-                  {busy === 'retry' ? <Loader2 className="animate-spin" /> : <Globe />}
-                  Connect
-                </Button>
+          {(isCapacitor() || remoteReauth) ? (
+            <div className="grid gap-3 rounded-xl border border-(--ui-stroke-tertiary) bg-(--ui-bg-quinary) p-3">
+              <div className="grid gap-1.5">
+                <label className="text-xs font-medium text-(--ui-text-primary)">
+                  Hermes Gateway URL
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="http://192.168.x.x:9119"
+                    value={gatewayInput}
+                    onChange={e => setGatewayInput(e.target.value)}
+                    className="text-xs flex-1"
+                  />
+                  <Button
+                    disabled={Boolean(busy) || !gatewayInput.trim()}
+                    onClick={() => void connectGateway()}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {busy === 'retry' ? <Loader2 className="animate-spin" /> : <Globe />}
+                    Set URL
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid gap-2 pt-2 border-t border-(--ui-stroke-tertiary)">
+                <label className="text-xs font-medium text-(--ui-text-primary)">
+                  Gateway Sign In
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <Input
+                    placeholder="Username"
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    className="text-xs"
+                    autoCapitalize="none"
+                  />
+                  <Input
+                    placeholder="Password"
+                    type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') void handlePasswordLogin()
+                    }}
+                    className="text-xs"
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    disabled={Boolean(busy) || !username.trim() || !password}
+                    onClick={() => void handlePasswordLogin()}
+                    size="sm"
+                  >
+                    {busy === 'signin' ? <Loader2 className="animate-spin" /> : <LogIn />}
+                    Sign in
+                  </Button>
+                </div>
               </div>
             </div>
           ) : null}

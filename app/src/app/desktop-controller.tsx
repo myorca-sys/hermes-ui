@@ -99,6 +99,9 @@ import { useGatewayBoot } from './gateway/hooks/use-gateway-boot'
 import { useGatewayRequest } from './gateway/hooks/use-gateway-request'
 import { useKeybinds } from './hooks/use-keybinds'
 import { SIDEBAR_COLLAPSE_MEDIA_QUERY } from './layout-constants'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { MobileSessionDrawer } from './shell/mobile-session-drawer'
+import { MobileWorkspaceDrawer } from './shell/mobile-workspace-drawer'
 import { ModelPickerOverlay } from './model-picker-overlay'
 import { ModelVisibilityOverlay } from './model-visibility-overlay'
 import { PetGenerateOverlay } from './pet-generate/pet-generate-overlay'
@@ -214,6 +217,7 @@ export function DesktopController() {
   // collapse both sidebars (without touching their stored open state) so the
   // hover-reveal overlay becomes the way in. Restores once it's wide again.
   const narrowViewport = useMediaQuery(SIDEBAR_COLLAPSE_MEDIA_QUERY)
+  const isMobile = useIsMobile()
 
   const routedSessionId = routeSessionId(location.pathname)
   const routeToken = `${location.pathname}:${location.search}:${location.hash}`
@@ -1343,21 +1347,24 @@ export function DesktopController() {
       terminalPaneOpen={terminalSidebarOpen}
       titlebarTools={titlebarToolGroups.flat.right}
     >
-      {!isSecondaryWindow() && (
-        <Pane
-          forceCollapsed={narrowViewport}
-          hoverReveal
-          id="chat-sidebar"
-          maxWidth={SIDEBAR_MAX_WIDTH}
-          minWidth={SIDEBAR_DEFAULT_WIDTH}
-          onOverlayActiveChange={setSidebarOverlayMounted}
-          resizable
-          side={sidebarSide}
-          width={`${SIDEBAR_DEFAULT_WIDTH}px`}
-        >
-          {sidebar}
-        </Pane>
-      )}
+      {!isSecondaryWindow() &&
+        (isMobile ? (
+          <MobileSessionDrawer>{sidebar}</MobileSessionDrawer>
+        ) : (
+          <Pane
+            forceCollapsed={narrowViewport}
+            hoverReveal
+            id="chat-sidebar"
+            maxWidth={SIDEBAR_MAX_WIDTH}
+            minWidth={SIDEBAR_DEFAULT_WIDTH}
+            onOverlayActiveChange={setSidebarOverlayMounted}
+            resizable
+            side={sidebarSide}
+            width={`${SIDEBAR_DEFAULT_WIDTH}px`}
+          >
+            {sidebar}
+          </Pane>
+        ))}
       <PaneMain>
         <Routes>
           <Route element={chatView} index />
@@ -1402,11 +1409,20 @@ export function DesktopController() {
         mirror to file-browser | preview | terminal | main so terminal stays
         adjacent to the chat.
       */}
-      {panesFlipped ? fileBrowserPane : terminalPane}
-      {contributedRightPanes}
-      {previewPane}
-      {reviewPane}
-      {panesFlipped ? terminalPane : fileBrowserPane}
+      {isMobile ? (
+        <MobileWorkspaceDrawer
+          onActivateFile={path => composer.insertContextPathInlineRef(path)}
+          onActivateFolder={path => composer.insertContextPathInlineRef(path, true)}
+        />
+      ) : (
+        <>
+          {panesFlipped ? fileBrowserPane : terminalPane}
+          {contributedRightPanes}
+          {previewPane}
+          {reviewPane}
+          {panesFlipped ? terminalPane : fileBrowserPane}
+        </>
+      )}
     </AppShell>
   )
 }

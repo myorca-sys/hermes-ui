@@ -12,7 +12,7 @@ import type { ConversationStatus } from './hooks/use-voice-conversation'
 import { ModelPill } from './model-pill'
 import type { ChatBarState, VoiceStatus } from './types'
 
-export const ICON_BTN = 'size-(--composer-control-size) shrink-0 rounded-md'
+export const ICON_BTN = 'size-(--composer-control-size) shrink-0 rounded-md active:scale-95 transition-transform'
 export const GHOST_ICON_BTN = cn(
   ICON_BTN,
   'text-(--ui-text-tertiary) hover:bg-(--chrome-action-hover) hover:text-foreground'
@@ -22,7 +22,7 @@ export const GHOST_ICON_BTN = cn(
 // match the reference composer's high-contrast CTA. Keeps the pill itself
 // neutral and lets the action visually dominate the row.
 export const PRIMARY_ICON_BTN = cn(
-  'size-(--composer-control-primary-size,var(--composer-control-size)) shrink-0 rounded-full p-0',
+  'size-(--composer-control-primary-size,var(--composer-control-size)) shrink-0 rounded-full p-0 active:scale-95 transition-transform',
   'bg-foreground text-background hover:bg-foreground/90',
   'disabled:bg-foreground/30 disabled:text-background disabled:opacity-100'
 )

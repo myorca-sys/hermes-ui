@@ -2,6 +2,7 @@ import { useAuiState } from '@assistant-ui/react'
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react'
 
 import { useMediaQuery } from '@/hooks/use-media-query'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { useResizeObserver } from '@/hooks/use-resize-observer'
 import { $composerPoppedOut } from '@/store/composer-popout'
 import { isSecondaryWindow } from '@/store/windows'
@@ -31,6 +32,7 @@ export function useComposerMetrics({ composerRef, composerSurfaceRef, editorRef,
   const [tight, setTight] = useState(false)
   // Wider than `tight`: the pill goes icon-only before the row has to stack.
   const [compactPill, setCompactPill] = useState(false)
+  const isMobile = useIsMobile()
   const narrow = useMediaQuery('(max-width: 30rem)')
 
   // Edge signals, not the live text: these only re-render when emptiness / the
@@ -168,6 +170,9 @@ export function useComposerMetrics({ composerRef, composerSurfaceRef, editorRef,
   }, [])
 
   // Pill compacts on real width (tile/pane), OR when stacked for any reason
-  // (viewport-narrow / wrapped) so the controls row never over-runs.
-  return { compactPill: compactPill || narrow || tight, stacked: expanded || narrow || tight }
+  // (viewport-narrow / wrapped / mobile) so the controls row never over-runs.
+  return {
+    compactPill: isMobile || compactPill || narrow || tight,
+    stacked: isMobile || expanded || narrow || tight
+  }
 }

@@ -90,7 +90,7 @@ function rewriteThroughDevProxy(absoluteUrl: string): string {
  * A trailing slash is always trimmed.
  */
 export function normalizeBase(url: string): string {
-  const value = (url || '').trim().replace(/\/+$/, '')
+  const value = (url || '').trim().replace(/#.*$/, '').replace(/\/+$/, '')
 
   if (!value) { return servingBase() }
 

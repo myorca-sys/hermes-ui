@@ -18,11 +18,13 @@ import {
 import { $paneWidthOverride } from '@/store/panes'
 import { $connection } from '@/store/session'
 import { isSecondaryWindow } from '@/store/windows'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 import { SIDEBAR_COLLAPSE_MEDIA_QUERY } from '../layout-constants'
 
 import { useWindowControlsOverlayWidth } from './hooks/use-window-controls-overlay-width'
 import { KeybindPanel } from './keybind-panel'
+import { MobileHeader } from './mobile-header'
 import { StatusbarControls, type StatusbarItem } from './statusbar-controls'
 import { TITLEBAR_HEIGHT, titlebarControlsPosition } from './titlebar'
 import { TitlebarControls, type TitlebarTool } from './titlebar-controls'
@@ -158,6 +160,8 @@ export function AppShell({
       ? `calc(${previewToolbarGap} + ${paneToolCount} * (var(--titlebar-control-size) + 0.25rem))`
       : systemToolsWidth
 
+  const isMobile = useIsMobile()
+
   return (
     <SidebarProvider
       className="h-[100dvh] min-h-0 flex-col bg-background"
@@ -190,11 +194,14 @@ export function AppShell({
         } as CSSProperties
       }
     >
-      {!hideTitlebarControls && (
-        <TitlebarControls leftTools={leftTitlebarTools} onOpenSettings={onOpenSettings} tools={titlebarTools} />
-      )}
+      {!hideTitlebarControls &&
+        (isMobile ? (
+          <MobileHeader onOpenSettings={onOpenSettings} />
+        ) : (
+          <TitlebarControls leftTools={leftTitlebarTools} onOpenSettings={onOpenSettings} tools={titlebarTools} />
+        ))}
 
-      {nativeOverlayWidth > 0 && (
+      {!isMobile && nativeOverlayWidth > 0 && (
         <div
           aria-hidden
           className="pointer-events-none fixed right-0 top-0 z-[4] h-(--titlebar-height) w-(--titlebar-tools-right) border-b border-(--ui-stroke-tertiary) bg-(--ui-chat-surface-background)"
@@ -203,14 +210,18 @@ export function AppShell({
 
       <main className="relative z-3 flex min-h-0 w-full flex-1 flex-col overflow-hidden transition-none">
         <PaneShell className="min-h-0 flex-1">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute left-0 top-0 z-1 h-(--titlebar-height) w-(--titlebar-controls-left) [-webkit-app-region:drag]"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute top-0 z-1 h-(--titlebar-height) left-[calc(var(--titlebar-controls-left)+(var(--titlebar-control-size)*2)+0.75rem)] right-[calc(var(--titlebar-tools-right)+var(--titlebar-tools-width)+0.75rem)] [-webkit-app-region:drag]"
-          />
+          {!isMobile && (
+            <>
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute left-0 top-0 z-1 h-(--titlebar-height) w-(--titlebar-controls-left) [-webkit-app-region:drag]"
+              />
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute top-0 z-1 h-(--titlebar-height) left-[calc(var(--titlebar-controls-left)+(var(--titlebar-control-size)*2)+0.75rem)] right-[calc(var(--titlebar-tools-right)+var(--titlebar-tools-width)+0.75rem)] [-webkit-app-region:drag]"
+              />
+            </>
+          )}
 
           {children}
         </PaneShell>
@@ -220,9 +231,11 @@ export function AppShell({
             the panes' z-20 resize handles, keeping every pane resizable. */}
         {mainOverlays}
 
-        {/* The compact pop-out drops the statusbar — it's a scratch window, not
+        {/* The compact pop-out and mobile drop the statusbar — it's a scratch window, not
             the full shell. */}
-        {!isSecondaryWindow() && <StatusbarControls items={statusbarItems} leftItems={leftStatusbarItems} />}
+        {!isSecondaryWindow() && !isMobile && (
+          <StatusbarControls items={statusbarItems} leftItems={leftStatusbarItems} />
+        )}
       </main>
 
       {overlays}

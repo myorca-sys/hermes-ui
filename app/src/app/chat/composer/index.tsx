@@ -4,6 +4,7 @@ import { type ClipboardEvent, type FormEvent, type KeyboardEvent, useCallback, u
 
 import { composerFill, composerSurfaceGlass } from '@/components/chat/composer-dock'
 import { Button } from '@/components/ui/button'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { useI18n } from '@/i18n'
 import { chatMessageText } from '@/lib/chat-messages'
 import { DATA_IMAGE_URL_RE } from '@/lib/embedded-images'
@@ -102,6 +103,7 @@ export function ChatBar({
     [onSubmitProp]
   )
 
+  const isMobile = useIsMobile()
   const attachments = useStore($composerAttachments)
   const scrolledUp = useStore($threadScrolledUp)
   const autoSpeak = useStore($autoSpeakReplies)
@@ -826,12 +828,14 @@ export function ChatBar({
       <ComposerPrimitive.Unstable_TriggerPopoverRoot>
         <ComposerPrimitive.Root
           className={cn(
-            'group/composer z-30 overflow-visible rounded-2xl',
+            'group/composer z-30 overflow-visible rounded-2xl transition-[bottom] duration-200 ease-out',
             poppedOut
               ? // Floating: the composer (with its own border) floats with an even
                 // 5px transparent grab margin around it — drag that to move it.
                 'fixed w-[var(--composer-popout-width)] max-w-[calc(100vw-1.5rem)] bg-transparent p-[5px]'
-              : 'absolute bottom-0 left-1/2 w-[min(var(--composer-width),calc(100%-2rem))] max-w-full -translate-x-1/2 pt-2 pb-[var(--composer-shell-pad-block-end)]',
+              : isMobile
+                ? 'absolute bottom-0 left-1/2 w-[calc(100%-1rem)] max-w-full -translate-x-1/2 pt-1 pb-[var(--composer-shell-pad-block-end)]'
+                : 'absolute bottom-0 left-1/2 w-[min(var(--composer-width),calc(100%-2rem))] max-w-full -translate-x-1/2 pt-2 pb-[var(--composer-shell-pad-block-end)]',
             dragging && 'cursor-grabbing select-none touch-none'
           )}
           data-drag-active={dragActive ? '' : undefined}
@@ -862,7 +866,11 @@ export function ChatBar({
                   // A compact one-sentence width when floating.
                   ['--composer-popout-width' as string]: `${POPOUT_WIDTH_REM}rem`
                 }
-              : undefined
+              : isMobile
+                ? {
+                    bottom: 'calc(var(--keyboard-inset, 0px) + var(--mobile-safe-bottom, 0.5rem))'
+                  }
+                : undefined
           }
         >
           {showHelpHint && <HelpHint />}
@@ -1013,13 +1021,17 @@ export function ChatBar({
 }
 
 export function ChatBarFallback() {
+  const isMobile = useIsMobile()
+
   return (
     <div
       className={cn(
-        'group/composer absolute bottom-0 left-1/2 z-30 w-[min(var(--composer-width),calc(100%-2rem))] max-w-full -translate-x-1/2 rounded-2xl pt-2 pb-[var(--composer-shell-pad-block-end)]',
+        'group/composer absolute bottom-0 left-1/2 z-30 max-w-full -translate-x-1/2 rounded-2xl pt-2 pb-[var(--composer-shell-pad-block-end)]',
+        isMobile ? 'w-[calc(100%-1rem)]' : 'w-[min(var(--composer-width),calc(100%-2rem))]',
         'bg-linear-to-b from-transparent to-background/55'
       )}
       data-slot="composer-root"
+      style={isMobile ? { bottom: 'calc(var(--keyboard-inset, 0px) + var(--mobile-safe-bottom, 0.5rem))' } : undefined}
     >
       <div className="composer-fallback-surface relative isolate h-(--composer-fallback-height) w-full rounded-[inherit] border border-[color-mix(in_srgb,var(--dt-composer-ring)_calc(18%*var(--composer-ring-strength)),var(--dt-input))]">
         <div

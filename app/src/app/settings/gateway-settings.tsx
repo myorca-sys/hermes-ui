@@ -104,6 +104,8 @@ export function GatewaySettings() {
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [signingIn, setSigningIn] = useState(false)
+  const [loginUsername, setLoginUsername] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
   const [state, setState] = useState<GatewaySettingsState>(EMPTY_STATE)
   const [remoteToken, setRemoteToken] = useState('')
   const [lastTest, setLastTest] = useState<null | string>(null)
@@ -373,6 +375,33 @@ export function GatewaySettings() {
     }
   }
 
+  const handleDirectPasswordLogin = async () => {
+    if (!trimmedUrl) {
+      notify({ kind: 'warning', title: g.incompleteTitle, message: g.enterUrlFirst })
+      return
+    }
+    if (!loginUsername.trim() || !loginPassword) {
+      notify({ kind: 'warning', title: g.incompleteTitle, message: 'Username and password required' })
+      return
+    }
+    setSigningIn(true)
+    try {
+      const res = await window.hermesDesktop?.passwordLoginConnectionConfig?.(trimmedUrl, loginUsername.trim(), loginPassword)
+      if (res?.ok) {
+        notify({ kind: 'success', title: g.signedIn, message: 'Signed in successfully' })
+        const refreshed = await window.hermesDesktop.getConnectionConfig(scope)
+        setState(refreshed)
+        setLoginPassword('')
+        return
+      }
+      notify({ kind: 'error', title: g.signInFailed, message: res?.error || 'Invalid credentials' })
+    } catch (err) {
+      notifyError(err, g.signInFailed)
+    } finally {
+      setSigningIn(false)
+    }
+  }
+
   const signOut = async () => {
     setSigningIn(true)
 
@@ -538,10 +567,38 @@ export function GatewaySettings() {
                     {g.signOut}
                   </Button>
                 </div>
+              ) : isPasswordProvider ? (
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <Input
+                    placeholder="Username"
+                    value={loginUsername}
+                    onChange={e => setLoginUsername(e.target.value)}
+                    className="h-8 text-xs w-28"
+                    autoCapitalize="none"
+                  />
+                  <Input
+                    placeholder="Password"
+                    type="password"
+                    value={loginPassword}
+                    onChange={e => setLoginPassword(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') void handleDirectPasswordLogin()
+                    }}
+                    className="h-8 text-xs w-28"
+                  />
+                  <Button
+                    disabled={signingIn || state.envOverride || !trimmedUrl || !loginUsername.trim() || !loginPassword}
+                    onClick={() => void handleDirectPasswordLogin()}
+                    size="sm"
+                  >
+                    {signingIn ? <Loader2 className="animate-spin" /> : <LogIn />}
+                    {g.signIn}
+                  </Button>
+                </div>
               ) : (
                 <Button disabled={signingIn || state.envOverride || !trimmedUrl} onClick={() => void signIn()}>
                   {signingIn ? <Loader2 className="animate-spin" /> : <LogIn />}
-                  {isPasswordProvider ? g.signIn : g.signInWith(providerLabel)}
+                  {g.signInWith(providerLabel)}
                 </Button>
               )
             }

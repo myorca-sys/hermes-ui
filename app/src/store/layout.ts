@@ -214,6 +214,23 @@ export function setFileBrowserOpen(open: boolean) {
   setPaneOpen(FILE_BROWSER_PANE_ID, open)
 }
 
+export type MobileWorkspaceTab = 'terminal' | 'files' | 'changes'
+export const $mobileWorkspaceDrawerOpen = atom(false)
+export const $mobileWorkspaceActiveTab = atom<MobileWorkspaceTab>('terminal')
+
+export function setMobileWorkspaceDrawerOpen(open: boolean) {
+  $mobileWorkspaceDrawerOpen.set(open)
+}
+
+export function toggleMobileWorkspaceDrawerOpen() {
+  $mobileWorkspaceDrawerOpen.set(!$mobileWorkspaceDrawerOpen.get())
+}
+
+export function setMobileWorkspaceActiveTab(tab: MobileWorkspaceTab) {
+  $mobileWorkspaceActiveTab.set(tab)
+  $mobileWorkspaceDrawerOpen.set(true)
+}
+
 // "Reveal this file in the file-browser tree" — an absolute path the tree
 // subscribes to, expanding ancestor folders and selecting/scrolling to it. Reset
 // to null by the tree once consumed.

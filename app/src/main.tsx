@@ -16,6 +16,7 @@ import { ErrorBoundary } from './components/error-boundary'
 import { HapticsProvider } from './components/haptics-provider'
 import { I18nProvider } from './i18n'
 import { installClipboardShim } from './lib/clipboard'
+import { initMobileNativeChrome } from './lib/mobile-native'
 import { queryClient } from './lib/query-client'
 import { initQueryPersistence } from './lib/query-persist'
 import { registerPwa } from './pwa/register'
@@ -24,6 +25,7 @@ import { initSidebarCache } from './store/sidebar-cache'
 import { ThemeProvider } from './themes/context'
 
 installClipboardShim()
+initMobileNativeChrome()
 registerPwa()
 initShellSnapshot()
 // Seed the sidebar recents from the per-(gateway,profile) cache before the first

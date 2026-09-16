@@ -145,8 +145,15 @@ function buildTokenWsUrl(token: string): string {
 }
 
 async function mintWsTicket(origin: string | null): Promise<string> {
+  const token = resolveToken()
+  const headers: Record<string, string> = {}
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+    headers['X-Hermes-Session-Token'] = token
+  }
   const res = await fetch(withGatewayRoute(`${baseUrl()}/api/auth/ws-ticket`, origin), {
     method: 'POST',
+    headers,
     credentials: requestCredentials()
   })
 
@@ -293,7 +300,10 @@ async function apiFetch<T>(request: HermesApiRequest): Promise<T> {
 
   if (body !== undefined) {headers['Content-Type'] = 'application/json'}
 
-  if (token) {headers['X-Hermes-Session-Token'] = token}
+  if (token) {
+    headers['X-Hermes-Session-Token'] = token
+    headers['Authorization'] = `Bearer ${token}`
+  }
 
   const res = await fetch(withGatewayRoute(url, activeUpstreamOrigin()), {
     method,
@@ -603,6 +613,43 @@ export function createWebBridge(): Window['hermesDesktop'] {
       syncDevGatewayCookie()
 
       return openOauthLoginPopup(base, origin)
+    },
+    passwordLoginConnectionConfig: async (remoteUrl, username, password) => {
+      const base = remoteUrl ? normalizeBase(remoteUrl) : baseUrl()
+      const origin = remoteUrl ? upstreamOriginFor(remoteUrl) : activeUpstreamOrigin()
+
+      const res = await fetch(withGatewayRoute(`${base}/auth/password-login`, origin), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'basic',
+          username,
+          password
+        }),
+        credentials: requestCredentials()
+      })
+
+      if (!res.ok) {
+        let errMessage = 'Invalid credentials'
+        try {
+          const errData = (await res.json()) as { detail?: string; message?: string }
+          errMessage = errData.detail || errData.message || errMessage
+        } catch {}
+        throw new Error(errMessage)
+      }
+
+      const data = (await res.json()) as { ok?: boolean; token?: string; access_token?: string }
+      const token = data.access_token || data.token || ''
+      if (token) {
+        localStorage.setItem(TOKEN_STORAGE_KEY, token)
+        localStorage.setItem('hermes_gateway_url', base)
+        const gateway = getActiveGateway()
+        if (gateway) {
+          updateGateway(gateway.id, { token, url: base, authMode: 'token' })
+        }
+      }
+
+      return { ok: true, token }
     },
     oauthLogoutConnectionConfig: async remoteUrl => {
       const base = remoteUrl ? normalizeBase(remoteUrl) : baseUrl()

@@ -466,6 +466,9 @@
     --safe-area-right: env(safe-area-inset-right, 0px);
     --safe-area-bottom: env(safe-area-inset-bottom, 0px);
     --safe-area-left: env(safe-area-inset-left, 0px);
+    --keyboard-inset: 0px;
+    --mobile-header-height: calc(3.25rem + var(--safe-area-top));
+    --mobile-safe-bottom: max(0.5rem, var(--safe-area-bottom));
   }
 
   html {

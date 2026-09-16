@@ -2,6 +2,7 @@ import { useStore } from '@nanostores/react'
 import { type RefObject, useCallback, useEffect } from 'react'
 
 import { triggerHaptic } from '@/lib/haptics'
+import { useIsMobile } from '@/hooks/use-mobile'
 import {
   $composerPopoutPosition,
   $composerPoppedOut,
@@ -25,7 +26,8 @@ interface UseComposerPopoutOptions {
  * window's composer out via the shared atom.
  */
 export function useComposerPopout({ composerRef }: UseComposerPopoutOptions) {
-  const popoutAllowed = !isSecondaryWindow()
+  const isMobile = useIsMobile()
+  const popoutAllowed = !isSecondaryWindow() && !isMobile
   const poppedOut = useStore($composerPoppedOut) && popoutAllowed
   const popoutPosition = useStore($composerPopoutPosition)
 
