@@ -36,6 +36,10 @@ const LEGACY_CONNECTION_KEY = 'hermes-web.connection'
 
 const DEFAULT_ID = 'default'
 
+export function isCapacitor(): boolean {
+  return typeof window !== 'undefined' && Boolean((window as unknown as { Capacitor?: unknown }).Capacitor)
+}
+
 function resolveBasePath(): string {
   const raw = window.__HERMES_BASE_PATH__ ?? ''
 
@@ -44,6 +48,18 @@ function resolveBasePath(): string {
 
 /** The origin the app was served from - the zero-config default gateway. */
 export function servingBase(): string {
+  if (isCapacitor()) {
+    try {
+      const stored = localStorage.getItem('hermes_gateway_url')
+      if (stored && stored.trim()) {
+        return stored.trim().replace(/\/+$/, '')
+      }
+    } catch {
+      // ignore
+    }
+    return 'http://localhost:9119'
+  }
+
   return window.location.origin + resolveBasePath()
 }
 
@@ -129,6 +145,8 @@ function isDevProxyOrigin(origin: string): boolean {
 }
 
 export function classifyGatewayReach(url: string): GatewayReachBlock | null {
+  if (isCapacitor()) { return null }
+
   try {
     const target = new URL(normalizeBase(url), window.location.href)
 
@@ -215,10 +233,19 @@ function newId(): string {
 }
 
 function defaultStore(): GatewayStore {
+  let defaultUrl = ''
+  if (isCapacitor()) {
+    try {
+      defaultUrl = (localStorage.getItem('hermes_gateway_url') ?? '').trim()
+    } catch {
+      // ignore
+    }
+  }
+
   return {
     version: 1,
     activeId: DEFAULT_ID,
-    gateways: [{ id: DEFAULT_ID, name: 'Default', url: '', authMode: 'oauth' }]
+    gateways: [{ id: DEFAULT_ID, name: 'Default', url: defaultUrl, authMode: 'oauth' }]
   }
 }
 
@@ -342,6 +369,14 @@ export function addGateway(input: { name: string; url: string; authMode: 'oauth'
   })
   commit(store)
 
+  if (isCapacitor() && input.url) {
+    try {
+      localStorage.setItem('hermes_gateway_url', input.url.trim())
+    } catch {
+      // ignore
+    }
+  }
+
   return id
 }
 
@@ -359,6 +394,14 @@ export function updateGateway(id: string, patch: Partial<Omit<GatewayConnection,
 
   if (patch.token !== undefined) { gateway.token = patch.token }
   commit(store)
+
+  if (isCapacitor() && gateway.url) {
+    try {
+      localStorage.setItem('hermes_gateway_url', gateway.url)
+    } catch {
+      // ignore
+    }
+  }
 }
 
 /** Remove a gateway. The last remaining gateway cannot be removed. */

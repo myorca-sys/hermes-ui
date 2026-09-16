@@ -42,8 +42,9 @@ jobs:
       - name: Prepare Mobile Assets
         run: |
           cd mobile
-          mkdir -p dist/web
-          cp -r ../app/dist/* dist/web/
+          rm -rf dist
+          mkdir -p dist
+          cp -r ../app/dist/* dist/
 
       - name: Setup Capacitor and Android Project
         run: |

@@ -4,15 +4,17 @@ import { useNavigate } from 'react-router-dom'
 
 import { SETTINGS_ROUTE } from '@/app/routes'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { ErrorIcon } from '@/components/ui/error-state'
 import { LogView } from '@/components/ui/log-view'
 import type { DesktopConnectionConfig } from '@/global'
 import { useI18n } from '@/i18n'
-import { FileText, Loader2, LogIn, RefreshCw, Settings, Wrench } from '@/lib/icons'
+import { FileText, Globe, Loader2, LogIn, RefreshCw, Settings, Wrench } from '@/lib/icons'
 import { supportsLogAccess } from '@/lib/web-platform'
 import { $desktopBoot } from '@/store/boot'
 import { notify, notifyError } from '@/store/notifications'
 import { $desktopOnboarding } from '@/store/onboarding'
+import { isCapacitor } from '@/web-bridge/gateways'
 
 import type { RemoteReauth } from './boot-failure-reauth'
 import { deriveProviderShape, isRemoteReauthFailure, signInLabel } from './boot-failure-reauth'
@@ -43,6 +45,13 @@ export function BootFailureOverlay() {
   // the URL or switch gateways. The app shell renders underneath this overlay,
   // so dismissing it reveals the (still usable) settings screen.
   const [dismissed, setDismissed] = useState(false)
+  const [gatewayInput, setGatewayInput] = useState(() => {
+    try {
+      return localStorage.getItem('hermes_gateway_url') || ''
+    } catch {
+      return ''
+    }
+  })
 
   const visible = Boolean(boot.error) && !boot.running
   // While first-run onboarding owns the picker/flow we let it surface its own
@@ -123,6 +132,27 @@ export function BootFailureOverlay() {
     setDismissed(true)
   }
 
+  const connectGateway = async () => {
+    let url = gatewayInput.trim().replace(/\/+$/, '')
+    if (!url) return
+    if (!/^https?:\/\//i.test(url)) {
+      url = 'http://' + url
+    }
+    setBusy('retry')
+    try {
+      localStorage.setItem('hermes_gateway_url', url)
+      await window.hermesDesktop?.applyConnectionConfig({
+        mode: 'remote',
+        remoteUrl: url,
+        remoteAuthMode: 'token'
+      })
+      window.location.reload()
+    } catch (err) {
+      notifyError(err, 'Failed to connect')
+      setBusy(null)
+    }
+  }
+
   const retry = async () => {
     setBusy('retry')
     await window.hermesDesktop?.resetBootstrap().catch(() => undefined)
@@ -197,6 +227,33 @@ export function BootFailureOverlay() {
           <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
             {boot.error}
           </div>
+
+          {isCapacitor() ? (
+            <div className="grid gap-2 rounded-xl border border-(--ui-stroke-tertiary) bg-(--ui-bg-quinary) p-3">
+              <label className="text-xs font-medium text-(--ui-text-primary)">
+                Hermes Gateway URL
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="http://192.168.x.x:9119"
+                  value={gatewayInput}
+                  onChange={e => setGatewayInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') void connectGateway()
+                  }}
+                  className="text-xs flex-1"
+                />
+                <Button
+                  disabled={Boolean(busy) || !gatewayInput.trim()}
+                  onClick={() => void connectGateway()}
+                  size="sm"
+                >
+                  {busy === 'retry' ? <Loader2 className="animate-spin" /> : <Globe />}
+                  Connect
+                </Button>
+              </div>
+            </div>
+          ) : null}
 
           <div className="grid gap-2">
             <div className="flex flex-wrap gap-2">

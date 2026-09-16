@@ -34,6 +34,7 @@ import {
   activeUpstreamOrigin,
   classifyGatewayReach,
   getActiveGateway,
+  isCapacitor,
   normalizeBase,
   servingBase,
   syncDevGatewayCookie,
@@ -135,6 +136,10 @@ function wsBaseUrl(): string {
   return httpBase.replace(/^http/, 'ws')
 }
 
+function requestCredentials(): RequestCredentials {
+  return isCapacitor() ? 'include' : 'same-origin'
+}
+
 function buildTokenWsUrl(token: string): string {
   return `${wsBaseUrl()}/api/ws?token=${encodeURIComponent(token)}`
 }
@@ -142,7 +147,7 @@ function buildTokenWsUrl(token: string): string {
 async function mintWsTicket(origin: string | null): Promise<string> {
   const res = await fetch(withGatewayRoute(`${baseUrl()}/api/auth/ws-ticket`, origin), {
     method: 'POST',
-    credentials: 'same-origin'
+    credentials: requestCredentials()
   })
 
   if (!res.ok) {
@@ -173,7 +178,7 @@ async function probeAuthConnected(
 
   try {
     const res = await fetch(withGatewayRoute(`${base}/api/auth/me`, origin), {
-      credentials: 'same-origin',
+      credentials: requestCredentials(),
       signal: AbortSignal.timeout(6_000)
     })
 
@@ -193,6 +198,7 @@ async function probeAuthConnected(
  * the gateway serves the app. An absolute cross-origin URL never can.
  */
 function isSameOrigin(base: string): boolean {
+  if (isCapacitor()) { return true }
   try {
     return new URL(base, window.location.href).origin === window.location.origin
   } catch {
@@ -293,7 +299,7 @@ async function apiFetch<T>(request: HermesApiRequest): Promise<T> {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
-    credentials: 'same-origin',
+    credentials: requestCredentials(),
     signal: AbortSignal.timeout(timeoutMs ?? DEFAULT_API_TIMEOUT_MS)
   })
 
@@ -367,7 +373,7 @@ async function fetchStatus(
   origin: string | null = null
 ): Promise<{ auth_providers?: string[]; auth_required?: boolean; version?: string } | null> {
   const res = await fetch(withGatewayRoute(`${base}/api/status`, origin), {
-    credentials: 'same-origin',
+    credentials: requestCredentials(),
     signal: AbortSignal.timeout(8_000)
   })
 
@@ -601,7 +607,7 @@ export function createWebBridge(): Window['hermesDesktop'] {
     oauthLogoutConnectionConfig: async remoteUrl => {
       const base = remoteUrl ? normalizeBase(remoteUrl) : baseUrl()
       const origin = remoteUrl ? upstreamOriginFor(remoteUrl) : activeUpstreamOrigin()
-      await fetch(withGatewayRoute(`${base}/auth/logout`, origin), { method: 'POST', credentials: 'same-origin' })
+      await fetch(withGatewayRoute(`${base}/auth/logout`, origin), { method: 'POST', credentials: requestCredentials() })
 
       return { ok: true, connected: false }
     },
