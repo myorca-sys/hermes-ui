@@ -146,7 +146,7 @@ export function BootFailureOverlay() {
       await window.hermesDesktop?.applyConnectionConfig({
         mode: 'remote',
         remoteUrl: url,
-        remoteAuthMode: 'token'
+        remoteAuthMode: 'oauth'
       })
       window.location.reload()
     } catch (err) {

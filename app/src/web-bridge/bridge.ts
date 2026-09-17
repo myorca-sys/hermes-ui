@@ -179,12 +179,16 @@ async function probeAuthConnected(
   base: string = baseUrl(),
   origin: string | null = activeUpstreamOrigin()
 ): Promise<boolean> {
-  if (resolveToken()) {
-    return true
+  const token = resolveToken()
+  const headers: Record<string, string> = {}
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+    headers['X-Hermes-Session-Token'] = token
   }
 
   try {
     const res = await fetch(withGatewayRoute(`${base}/api/auth/me`, origin), {
+      headers,
       credentials: requestCredentials(),
       signal: AbortSignal.timeout(6_000)
     })
@@ -342,11 +346,11 @@ function connection(profile?: string | null): HermesConnection {
     mode: 'remote',
     source: 'settings',
     // 'oauth' forces the renderer to re-resolve the WS URL through
-    // getGatewayWsUrl on every reconnect, which cookie mode needs because
+    // getGatewayWsUrl on every reconnect, which gated gateways need because
     // tickets are single-use.
-    authMode: token ? 'token' : 'oauth',
+    authMode: 'oauth',
     token,
-    wsUrl: token ? buildTokenWsUrl(token) : '',
+    wsUrl: '',
     logs: [],
     isFullscreen: false,
     nativeOverlayWidth: 0,
@@ -357,11 +361,11 @@ function connection(profile?: string | null): HermesConnection {
 
 async function toConnectionConfig(stored: StoredConnection): Promise<DesktopConnectionConfig> {
   const token = resolveToken()
-  const hasToken = stored.remoteAuthMode === 'token' && Boolean(stored.remoteToken || token)
+  const hasToken = Boolean(stored.remoteToken || token)
   // Reflect the REAL session state so isRemoteReauthFailure() can decide whether
   // to show the sign-in branch. Reporting a false "connected" here would hide
   // the sign-in path and strand the user on a dead connection.
-  const remoteOauthConnected = stored.remoteAuthMode === 'oauth' ? await probeAuthConnected() : false
+  const remoteOauthConnected = await probeAuthConnected()
 
   return {
     // The web build has no environment overrides, so the settings screen is
@@ -371,7 +375,7 @@ async function toConnectionConfig(stored: StoredConnection): Promise<DesktopConn
     profile: null,
     remoteAuthMode: stored.remoteAuthMode,
     remoteOauthConnected,
-    remoteTokenPreview: stored.remoteToken ? `...${stored.remoteToken.slice(-4)}` : null,
+    remoteTokenPreview: (stored.remoteToken || token) ? `...${(stored.remoteToken || token).slice(-4)}` : null,
     remoteTokenSet: hasToken,
     remoteUrl: stored.remoteUrl
   }
@@ -508,10 +512,15 @@ export function createWebBridge(): Window['hermesDesktop'] {
       const origin = activeUpstreamOrigin()
       const token = resolveToken()
 
-      if (token) {return withGatewayRoute(buildTokenWsUrl(token), origin)}
-      const ticket = await mintWsTicket(origin)
-
-      return withGatewayRoute(`${wsBaseUrl()}/api/ws?ticket=${encodeURIComponent(ticket)}`, origin)
+      try {
+        const ticket = await mintWsTicket(origin)
+        return withGatewayRoute(`${wsBaseUrl()}/api/ws?ticket=${encodeURIComponent(ticket)}`, origin)
+      } catch (err) {
+        if (token) {
+          return withGatewayRoute(buildTokenWsUrl(token), origin)
+        }
+        throw err
+      }
     },
     openSessionWindow: async sessionId => {
       const opened = window.open(`${window.location.pathname}#/${sessionId}`, '_blank', 'noopener')
@@ -645,11 +654,11 @@ export function createWebBridge(): Window['hermesDesktop'] {
         localStorage.setItem('hermes_gateway_url', base)
         const gateway = getActiveGateway()
         if (gateway) {
-          updateGateway(gateway.id, { token, url: base, authMode: 'token' })
+          updateGateway(gateway.id, { token, url: base, authMode: 'oauth' })
         }
       }
 
-      return { ok: true, token }
+      return { ok: true, token, connected: true }
     },
     oauthLogoutConnectionConfig: async remoteUrl => {
       const base = remoteUrl ? normalizeBase(remoteUrl) : baseUrl()
