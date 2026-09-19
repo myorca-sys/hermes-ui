@@ -127,7 +127,7 @@ function resolveToken(): string {
 
   const gateway = getActiveGateway()
 
-  return gateway.authMode === 'token' ? (gateway.token ?? '') : ''
+  return gateway.token || (gateway.authMode === 'token' ? (gateway.token ?? '') : '')
 }
 
 function wsBaseUrl(): string {

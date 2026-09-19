@@ -3,7 +3,7 @@
   "appName": "Hermes UI",
   "webDir": "dist",
   "server": {
-    "androidScheme": "http",
+    "androidScheme": "https",
     "cleartext": true,
     "allowNavigation": ["*"]
   },
@@ -11,9 +11,6 @@
     "allowMixedContent": true
   },
   "plugins": {
-    "CapacitorHttp": {
-      "enabled": true
-    },
     "StatusBar": {
       "overlaysWebView": true,
       "style": "DARK"
